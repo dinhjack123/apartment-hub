@@ -88,6 +88,16 @@ function applyTheme(t) {
   try { localStorage.setItem('hub:theme', t) } catch {}
   const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = { aurora: '#0b0e1f', sunset: '#150b12', ocean: '#06141b', classic: '#6b8f71' }[t]
 }
+const ORDER = ['home', 'food', 'spending', 'settings']
+const SCR = { sl: 0, st: 0, tab: null }
+async function goTab(tab, dir) {
+  if (tab === S.tab) return
+  dir = dir || (ORDER.indexOf(tab) > ORDER.indexOf(S.tab) ? 'l' : 'r')
+  Food.closeTransient(); Spending.closeTransient()
+  S.tab = tab; S.msg = null; S.anim = true; S.dir = dir
+  if (tab === 'home') await Spending.resetMonth()
+  render()
+}
 function toast(t) {
   const e = document.createElement('div'); e.className = 'toast'; e.textContent = t
   document.body.appendChild(e); setTimeout(() => e.remove(), 2300)
@@ -95,15 +105,25 @@ function toast(t) {
 function count(el, isMoney) {
   const end = Number(el.dataset.money ?? el.dataset.int), t0 = performance.now()
   const step = t => {
-    const p = Math.min(1, (t - t0) / 700), v = end * (1 - Math.pow(1 - p, 3))
+    const p = Math.min(1, (t - t0) / 450), v = end * (1 - Math.pow(1 - p, 3))
     el.textContent = isMoney ? (v / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : Math.round(v)
     if (p < 1) requestAnimationFrame(step)
   }
   requestAnimationFrame(step)
 }
 function afterRender() {
-  const shell = root.querySelector('.shell'); if (!shell || !S.anim) return
-  S.anim = false; shell.classList.add('go')
+  const shell = root.querySelector('.shell'); if (!shell) return
+  root.querySelectorAll('.content .sheet-bg').forEach(e => root.appendChild(e)) // dialogs live above the nav bar
+  const sub = root.querySelector('.subs'), ct = root.querySelector('.content')
+  if (sub) {
+    sub.scrollLeft = SCR.sl
+    const on = sub.querySelector('.on')
+    if (on) { const l = on.offsetLeft, r = l + on.offsetWidth; if (l < sub.scrollLeft + 16) sub.scrollLeft = l - 16; else if (r > sub.scrollLeft + sub.clientWidth - 16) sub.scrollLeft = r - sub.clientWidth + 16 }
+  }
+  if (ct && SCR.tab === S.tab && !S.anim) ct.scrollTop = SCR.st
+  SCR.tab = S.tab
+  if (!S.anim) return
+  S.anim = false; shell.classList.add('go'); if (S.dir) { shell.classList.add('d' + S.dir); S.dir = null }
   shell.querySelectorAll('[data-money]').forEach(el => count(el, true))
   shell.querySelectorAll('[data-int]').forEach(el => count(el, false))
 }
@@ -118,6 +138,7 @@ function homeView() {
   ${f.soonHtml}${f.recentHtml}`
 }
 function render() {
+  SCR.sl = root.querySelector('.subs')?.scrollLeft ?? 0; SCR.st = root.querySelector('.content')?.scrollTop ?? 0
   if (S.loading) { root.innerHTML = '<div class="center"><div class="spin"></div></div>'; return }
   if (!S.session) { root.innerHTML = authView(); return }
   if (S.error) { root.innerHTML = `<div class="center"><p class="err">Couldn’t load: ${esc(S.error)}</p><p class="muted">If this mentions a missing table, run the SQL in Supabase first.</p><button class="btn" data-act="retry">Try again</button></div>`; return }
@@ -160,7 +181,7 @@ root.addEventListener('click', async e => {
   if (act.startsWith('s-')) return Spending.click(act, el)
   if (act === 'theme') { applyTheme(el.dataset.t); render() }
   else if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
-  else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; S.anim = true; if (S.tab === 'home') await Spending.resetMonth(); render() }
+  else if (act === 'tab') goTab(el.dataset.tab)
   else if (act === 'retry') loadHousehold()
   else if (act === 'signout') await sb.auth.signOut()
   else if (act === 'invite') {
@@ -191,3 +212,22 @@ root.addEventListener('change', e => { if (e.target.dataset.f === 'est') Food.es
 // Block pinch-zoom (iOS Safari ignores user-scalable=no)
 for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => e.preventDefault())
 document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault() }, { passive: false })
+
+// Swipe between main tabs
+let t0 = null
+root.addEventListener('touchstart', e => {
+  const t = e.touches[0]
+  if (e.touches.length !== 1 || !S.hh || root.querySelector('.sheet-bg') || document.querySelector('.scan') ||
+      e.target.closest('input,select,textarea,button,a,label,.subs,.chips,.wk,[data-noswipe]') || t.clientX < 24 || t.clientX > innerWidth - 24) { t0 = null; return }
+  t0 = { x: t.clientX, y: t.clientY, t: Date.now() }
+}, { passive: true })
+root.addEventListener('touchend', e => {
+  if (!t0) return
+  const t = e.changedTouches[0], dx = t.clientX - t0.x, dy = t.clientY - t0.y, dt = Date.now() - t0.t; t0 = null
+  if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8 || dt > 700) return
+  const n = ORDER.indexOf(S.tab) + (dx < 0 ? 1 : -1)
+  if (n >= 0 && n < ORDER.length) goTab(ORDER[n], dx < 0 ? 'l' : 'r')
+}, { passive: true })
+// Keep dialogs above the iPhone keyboard
+const setVV = () => { const v = window.visualViewport; document.documentElement.style.setProperty('--vvh', (v?.height || innerHeight) + 'px'); document.documentElement.style.setProperty('--vvt', (v?.offsetTop || 0) + 'px') }
+setVV(); window.visualViewport?.addEventListener('resize', setVV); window.visualViewport?.addEventListener('scroll', setVV)

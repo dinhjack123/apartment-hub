@@ -134,3 +134,19 @@ html[data-theme=ocean]{--bg:#06141b;--card:#0e2430;--line:#173644;--soft:#133a4a
 .th.on{border-color:var(--ink)}
 .th-aurora{background:linear-gradient(135deg,#8b5cf6,#3b82f6)}.th-sunset{background:linear-gradient(135deg,#ff8a4c,#ff3d81)}
 .th-ocean{background:linear-gradient(135deg,#14b8a6,#3b82f6)}.th-classic{background:linear-gradient(135deg,#7da683,#5b8461)}
+
+/* ===== Round 2: dialogs above nav, swipe transitions, calmer motion (150-250ms) ===== */
+.content{padding-bottom:110px}
+.sheet-bg{position:fixed;inset:auto;left:0;right:0;top:var(--vvt,0px);height:var(--vvh,100dvh);z-index:200;display:flex;align-items:flex-end;animation:fade .18s ease-out}
+.sheet{max-height:calc(100% - env(safe-area-inset-top) - 12px);padding-bottom:calc(env(safe-area-inset-bottom) + 28px);overscroll-behavior:contain;animation:slideup .26s var(--ease)}
+.fab{z-index:20}
+.subs{scroll-behavior:auto}
+.go .content>*{animation:rise .24s var(--ease) both}
+.go .content>*:nth-child(2){animation-delay:.03s}.go .content>*:nth-child(3){animation-delay:.06s}.go .content>*:nth-child(4){animation-delay:.09s}
+.go .content>*:nth-child(5){animation-delay:.12s}.go .content>*:nth-child(n+6){animation-delay:.14s}
+.go.dl .content>*{animation-name:risel}.go.dr .content>*{animation-name:riser}
+.go .item{animation:rise .22s var(--ease) both}
+.go .bt i{animation-duration:.5s}.go .wk i{animation-duration:.5s}.go .nav button.on span{animation-duration:.25s}
+@keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes risel{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
+@keyframes riser{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}

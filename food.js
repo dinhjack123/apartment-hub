@@ -258,3 +258,5 @@ export function home() {
     soonHtml: soon.length ? `<div class="card"><h3>Use first</h3>${soon.slice(0, 5).map(row).join('')}</div>` : '',
     recentHtml: recent.length ? `<div class="card"><h3>Recently added</h3>${recent.map(i => `<div class="row">${esc(i.name)} <small class="muted">· ${LOC[i.location]}</small></div>`).join('')}</div>` : '' }
 }
+
+export function closeTransient() { F.modal = null; F.err = null; F.offer = null; if (F.dirty) { F.dirty = false; load().then(() => X.render()) } }

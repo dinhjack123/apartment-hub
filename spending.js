@@ -165,3 +165,5 @@ export function homeSummary() {
   }
   return { total, count: c.length, alerts, money }
 }
+
+export function closeTransient() { P.modal = null; P.catModal = false; P.err = null; if (P.dirty) { P.dirty = false; load().then(() => X.render()) } }
