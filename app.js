@@ -6,7 +6,9 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const S = { session: null, hh: null, tab: 'home', members: [], code: null, msg: null, mode: 'in', busy: false, loading: true, error: null, online: navigator.onLine, copied: false }
 let channel = null
 import * as Food from './food.js'
+import * as Spending from './spending.js'
 Food.init({ sb, S, esc, render: () => render() })
+Spending.init({ sb, S, esc, render: () => render() })
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
 addEventListener('online', () => { S.online = true; render() })
@@ -18,7 +20,7 @@ async function loadHousehold() {
   if (error) S.error = error.message
   else S.hh = data?.households ?? null
   S.loading = false
-  if (S.hh) { await loadMembers(); subscribe(); await Food.load() }
+  if (S.hh) { await loadMembers(); subscribe(); await Food.load(); await Spending.load() }
   render()
 }
 async function loadMembers() {
@@ -68,7 +70,7 @@ function tabView() {
     <li>Log purchases under <button class="link inline" data-act="tab" data-tab="spending">Spending</button>.</li></ol></div>
     <p class="muted">The dashboard fills in as you add data.</p>`
   if (S.tab === 'food') return Food.view()
-  if (S.tab === 'spending') return `<h1>Spending</h1><div class="card"><p class="muted">Spending tracker arrives in Stage 3.</p></div>`
+  if (S.tab === 'spending') return Spending.view()
   const me = S.session.user.id
   return `<h1>Settings</h1><div class="card"><h3>Members</h3>
     ${S.members.map(m => `<div class="row">${esc(m.display_name || 'Unnamed')}${m.id === me ? ' (you)' : ''}</div>`).join('')}
@@ -77,6 +79,8 @@ function tabView() {
       : `<button class="btn" data-act="invite">Create invite code</button>`) : ''}
     </div>${S.msg ? `<p class="err">${esc(S.msg.text)}</p>` : ''}
     <div class="card"><h3>Currency</h3><p class="muted">USD</p></div>
+    <button class="btn secondary" data-act="s-export">Export spending (CSV)</button>
+    <button class="btn secondary" data-act="s-cats">Spending categories</button>
     <button class="btn secondary" data-act="signout">Sign out</button>`
 }
 function render() {
@@ -93,6 +97,7 @@ root.addEventListener('submit', async e => {
   e.preventDefault()
   const f = e.target, kind = f.dataset.form, v = Object.fromEntries(new FormData(f))
   if (kind?.startsWith('f-')) { await Food.submit(kind, v); return }
+  if (kind?.startsWith('s-')) { await Spending.submit(kind, v); return }
   S.busy = true; S.msg = null
   if (kind === 'auth') {
     if (S.mode === 'in') {
@@ -117,6 +122,7 @@ root.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return
   const act = el.dataset.act
   if (act.startsWith('f-')) return Food.click(act, el)
+  if (act.startsWith('s-')) return Spending.click(act, el)
   if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
   else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; render() }
   else if (act === 'retry') loadHousehold()
@@ -142,3 +148,5 @@ S.session = data.session
 if (S.session) loadHousehold(); else { S.loading = false; render() }
 
 root.addEventListener('input', e => { if (e.target.dataset.f === 'q') Food.search(e.target.value) })
+root.addEventListener('input', e => { const k = e.target.dataset.s; if (k === 'q' || k === 'cat' || k === 'sort') Spending.filter(e.target) })
+root.addEventListener('change', e => { if (e.target.dataset.s === 'catname') Spending.rename(e.target) })
