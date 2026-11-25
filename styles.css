@@ -150,3 +150,14 @@ html[data-theme=ocean]{--bg:#06141b;--card:#0e2430;--line:#173644;--soft:#133a4a
 @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @keyframes risel{from{opacity:0;transform:translateX(22px)}to{opacity:1;transform:none}}
 @keyframes riser{from{opacity:0;transform:translateX(-22px)}to{opacity:1;transform:none}}
+/* camera must sit above the add/edit sheet */
+.scan{z-index:300}
+/* receipt review */
+.ri{background:var(--card);border-radius:16px;padding:12px;margin-bottom:10px;box-shadow:var(--shadow)}
+.ri .r1{display:flex;gap:8px;align-items:center}.ri .r1 input[name=name]{flex:1;margin:0}
+.ri .ck{width:22px;height:22px;flex:none;accent-color:var(--green)}
+.ri .r2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.ri input,.ri select{margin:0;padding:10px;font-size:16px}
+.ri .exp{display:block;font-size:12px;color:var(--muted);margin-top:8px}.ri .exp input{margin-top:4px}
+.rc .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rc label{display:block;font-size:13px;font-weight:600;margin-bottom:8px}.rc label input{margin-top:4px;font-weight:400}
+.rcbtn{margin:0 0 14px}

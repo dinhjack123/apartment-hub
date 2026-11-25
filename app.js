@@ -7,8 +7,10 @@ const S = { session: null, hh: null, tab: 'home', members: [], code: null, msg: 
 let channel = null
 import * as Food from './food.js'
 import * as Spending from './spending.js'
+import * as Receipt from './receipt.js'
 Food.init({ sb, S, esc, toast, render: () => render() })
 Spending.init({ sb, S, esc, toast, render: () => render() })
+Receipt.init({ sb, S, esc, toast, reload: async () => { await Food.load(); await Spending.load(); render() } })
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
 addEventListener('online', () => { S.online = true; render() })
@@ -65,8 +67,8 @@ function onboardView() {
 }
 function tabView() {
   if (S.tab === 'home') return homeView()
-  if (S.tab === 'food') return Food.view()
-  if (S.tab === 'spending') return Spending.view()
+  if (S.tab === 'food') return Food.view().replace('</h1>', '</h1>' + rcBar())
+  if (S.tab === 'spending') return Spending.view().replace('</h1>', '</h1>' + rcBar())
   const me = S.session.user.id
   return `<h1>Settings</h1><div class="card"><h3>Members</h3>
     ${S.members.map(m => `<div class="row">${esc(m.display_name || 'Unnamed')}${m.id === me ? ' (you)' : ''}</div>`).join('')}
@@ -98,6 +100,7 @@ async function goTab(tab, dir) {
   if (tab === 'home') await Spending.resetMonth()
   render()
 }
+function rcBar() { return '<button class="btn secondary rcbtn" data-act="rc-open">🧾 Scan receipt</button>' }
 function toast(t) {
   const e = document.createElement('div'); e.className = 'toast'; e.textContent = t
   document.body.appendChild(e); setTimeout(() => e.remove(), 2300)
@@ -177,6 +180,7 @@ root.addEventListener('submit', async e => {
 root.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return
   const act = el.dataset.act
+  if (act.startsWith('rc-')) return Receipt.click(act, el)
   if (act.startsWith('f-')) return Food.click(act, el)
   if (act.startsWith('s-')) return Spending.click(act, el)
   if (act === 'theme') { applyTheme(el.dataset.t); render() }
