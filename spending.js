@@ -137,6 +137,7 @@ export async function click(act, el) {
   const id = el.dataset.id
   if (act === 's-prev' || act === 's-next') { P.month = addM(P.month, act === 's-prev' ? -1 : 1); await load() }
   else if (act === 's-new') P.modal = {}
+  else if (act === 's-new-home') { X.S.tab = 'spending'; P.modal = {} }
   else if (act === 's-edit') P.modal = P.rows.find(r => r.id === id)
   else if (act === 's-close' || act === 's-catclose') return closeAll()
   else if (act === 's-cats') { X.S.tab = 'spending'; P.catModal = true }
@@ -152,4 +153,15 @@ export async function click(act, el) {
     await X.sb.from('spending_categories').delete().eq('id', id); await load()
   } else if (act === 's-export') return exportCsv()
   X.render()
+}
+
+export async function resetMonth() { if (P.month !== thisMonth()) { P.month = thisMonth(); await load() } }
+export function homeSummary() {
+  const c = cur(), total = sum(c), pt = sum(prev()), [y, mo] = P.month.split('-').map(Number), dim = new Date(y, mo, 0).getDate()
+  const elapsed = Number(todayStr().slice(8)), alerts = []
+  if (pt > 0 && c.length >= 3) {
+    if (total > pt) alerts.push(`💸 This month’s spending (${money(total)}) is already above all of last month (${money(pt)}).`)
+    else if (total / elapsed * dim > pt * 1.25) alerts.push(`💸 You’re on pace to spend about ${money(Math.round(total / elapsed * dim))} this month, over 25% more than last month.`)
+  }
+  return { total, count: c.length, alerts, money }
 }

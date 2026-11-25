@@ -64,11 +64,7 @@ function onboardView() {
   <button class="link" data-act="signout">Sign out</button></div>`
 }
 function tabView() {
-  if (S.tab === 'home') return `<h1>${esc(S.hh.name)}</h1><div class="card"><h3>Welcome 👋</h3><ol class="steps">
-    <li>Invite your roommate in <button class="link inline" data-act="tab" data-tab="settings">Settings</button>.</li>
-    <li>Add what’s in your kitchen under <button class="link inline" data-act="tab" data-tab="food">Food</button>.</li>
-    <li>Log purchases under <button class="link inline" data-act="tab" data-tab="spending">Spending</button>.</li></ol></div>
-    <p class="muted">The dashboard fills in as you add data.</p>`
+  if (S.tab === 'home') return homeView()
   if (S.tab === 'food') return Food.view()
   if (S.tab === 'spending') return Spending.view()
   const me = S.session.user.id
@@ -82,6 +78,16 @@ function tabView() {
     <button class="btn secondary" data-act="s-export">Export spending (CSV)</button>
     <button class="btn secondary" data-act="s-cats">Spending categories</button>
     <button class="btn secondary" data-act="signout">Sign out</button>`
+}
+function homeView() {
+  const f = Food.home(), sp = Spending.homeSummary(), alerts = [...f.alerts, ...sp.alerts]
+  return `<h1>${esc(S.hh.name)}</h1>
+  <div class="qa"><button data-act="f-new-home">🥕<span>Add food</span></button><button data-act="f-scan-home">📷<span>Scan</span></button><button data-act="s-new-home">💵<span>Purchase</span></button></div>
+  ${!f.tracked && !sp.count ? `<div class="card"><h3>Welcome 👋</h3><ol class="steps"><li>Invite your roommate in Settings.</li><li>Add food with Scan or Add food.</li><li>Log purchases as you spend.</li></ol></div>` : ''}
+  ${alerts.length ? `<div class="card"><h3>Heads up</h3>${alerts.map(a => `<p class="alert">${a}</p>`).join('')}</div>` : ''}
+  <div class="two"><div class="card stat"><small>Food tracked</small><b>${f.tracked}</b></div><div class="card stat"><small>Expiring in 7 days</small><b>${f.soon}</b></div>
+  <div class="card stat"><small>Spent this month</small><b>${sp.money(sp.total)}</b></div><div class="card stat"><small>Purchases</small><b>${sp.count}</b></div></div>
+  ${f.soonHtml}${f.recentHtml}`
 }
 function render() {
   if (S.loading) { root.innerHTML = '<div class="center">Loading…</div>'; return }
@@ -124,7 +130,7 @@ root.addEventListener('click', async e => {
   if (act.startsWith('f-')) return Food.click(act, el)
   if (act.startsWith('s-')) return Spending.click(act, el)
   if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
-  else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; render() }
+  else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; if (S.tab === 'home') await Spending.resetMonth(); render() }
   else if (act === 'retry') loadHousehold()
   else if (act === 'signout') await sb.auth.signOut()
   else if (act === 'invite') {
@@ -150,3 +156,4 @@ if (S.session) loadHousehold(); else { S.loading = false; render() }
 root.addEventListener('input', e => { if (e.target.dataset.f === 'q') Food.search(e.target.value) })
 root.addEventListener('input', e => { const k = e.target.dataset.s; if (k === 'q' || k === 'cat' || k === 'sort') Spending.filter(e.target) })
 root.addEventListener('change', e => { if (e.target.dataset.s === 'catname') Spending.rename(e.target) })
+root.addEventListener('change', e => { if (e.target.dataset.f === 'est') Food.est() })
