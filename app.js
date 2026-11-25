@@ -74,10 +74,19 @@ function tabView() {
       ? `<div class="code" data-act="copy">${esc(S.code)}<small>${S.copied ? 'Copied!' : 'Tap to copy · valid 7 days'}</small></div>`
       : `<button class="btn" data-act="invite">Create invite code</button>`) : ''}
     </div>${S.msg ? `<p class="err">${esc(S.msg.text)}</p>` : ''}
+    <div class="card"><h3>Theme</h3><div class="themes">${Object.entries(THEMES).map(([k, v]) => `<button class="th th-${k} ${document.documentElement.dataset.theme === k ? 'on' : ''}" data-act="theme" data-t="${k}">${v}</button>`).join('')}</div></div>
     <div class="card"><h3>Currency</h3><p class="muted">USD</p></div>
     <button class="btn secondary" data-act="s-export">Export spending (CSV)</button>
     <button class="btn secondary" data-act="s-cats">Spending categories</button>
     <button class="btn secondary" data-act="signout">Sign out</button>`
+}
+const THEMES = { aurora: 'Aurora', sunset: 'Sunset', ocean: 'Ocean', classic: 'Classic' }
+function applyTheme(t) {
+  if (!THEMES[t]) t = 'aurora'
+  document.documentElement.dataset.theme = t
+  document.documentElement.className = t === 'classic' ? '' : 'dark'
+  try { localStorage.setItem('hub:theme', t) } catch {}
+  const m = document.querySelector('meta[name=theme-color]'); if (m) m.content = { aurora: '#0b0e1f', sunset: '#150b12', ocean: '#06141b', classic: '#6b8f71' }[t]
 }
 function toast(t) {
   const e = document.createElement('div'); e.className = 'toast'; e.textContent = t
@@ -149,7 +158,8 @@ root.addEventListener('click', async e => {
   const act = el.dataset.act
   if (act.startsWith('f-')) return Food.click(act, el)
   if (act.startsWith('s-')) return Spending.click(act, el)
-  if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
+  if (act === 'theme') { applyTheme(el.dataset.t); render() }
+  else if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
   else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; S.anim = true; if (S.tab === 'home') await Spending.resetMonth(); render() }
   else if (act === 'retry') loadHousehold()
   else if (act === 'signout') await sb.auth.signOut()
@@ -177,3 +187,7 @@ root.addEventListener('input', e => { if (e.target.dataset.f === 'q') Food.searc
 root.addEventListener('input', e => { const k = e.target.dataset.s; if (k === 'q' || k === 'cat' || k === 'sort') Spending.filter(e.target) })
 root.addEventListener('change', e => { if (e.target.dataset.s === 'catname') Spending.rename(e.target) })
 root.addEventListener('change', e => { if (e.target.dataset.f === 'est') Food.est() })
+
+// Block pinch-zoom (iOS Safari ignores user-scalable=no)
+for (const ev of ['gesturestart', 'gesturechange', 'gestureend']) document.addEventListener(ev, e => e.preventDefault())
+document.addEventListener('touchmove', e => { if (e.touches.length > 1) e.preventDefault() }, { passive: false })
