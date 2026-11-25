@@ -63,3 +63,66 @@ h4{margin:14px 0 8px;color:var(--muted);font-size:13px;text-transform:uppercase;
 .alert{margin:0 0 8px;font-size:14px;line-height:1.4}
 .scan{position:fixed;inset:0;background:#000;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:16px}
 .scan video{width:100%;max-height:60%;object-fit:cover;border-radius:20px}.scan p{color:#fff;margin:0}.scan .btn{max-width:300px}
+.scan .addrow2{width:100%;max-width:300px}.scan label.btn{max-width:300px;text-align:center;margin:0}.scan input{margin:0}
+
+/* ===== Polish: motion, depth, dark mode ===== */
+:root{--soft:#e9f0ea;--ease:cubic-bezier(.2,.8,.2,1)}
+html{scroll-behavior:smooth}
+body{background:radial-gradient(1200px 500px at 50% -10%,#e7efe3 0%,var(--bg) 60%) fixed;overscroll-behavior:none}
+.content{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+h1{letter-spacing:-.5px}
+.card,.item{transition:transform .2s var(--ease),box-shadow .2s var(--ease)}
+.card{border:1px solid rgba(255,255,255,.6);box-shadow:0 1px 2px rgba(60,50,30,.05),0 8px 24px rgba(60,50,30,.07)}
+.item:active,.qa button:active,.subs button:active,.mini:active{transform:scale(.97)}
+.btn{background:linear-gradient(135deg,#7da683,#5b8461);transition:transform .15s var(--ease),filter .15s;box-shadow:0 4px 12px rgba(91,132,97,.3)}
+.btn:active{transform:scale(.97);filter:brightness(.95)}
+.btn.secondary,.btn.danger{box-shadow:none}.btn.secondary{background:var(--soft)}.btn.danger{background:#f6d9d4}
+input:focus,select:focus{outline:0;border-color:var(--green);box-shadow:0 0 0 4px rgba(107,143,113,.2)}
+input,select{transition:border-color .2s,box-shadow .2s}
+/* floating glass nav */
+.nav{margin:0 12px calc(env(safe-area-inset-bottom) + 8px);border:0;border-radius:28px;background:rgba(255,253,248,.78);-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);box-shadow:0 8px 30px rgba(40,50,40,.18);padding:6px}
+.nav button{transition:background .25s var(--ease),color .25s;position:relative}
+.nav button span{display:block;transition:transform .25s var(--ease)}.nav button.on span{transform:translateY(-1px) scale(1.15)}
+.fab{background:linear-gradient(135deg,#7da683,#4f7356);bottom:calc(env(safe-area-inset-bottom) + 100px);transition:transform .2s var(--ease)}.fab:active{transform:scale(.9) rotate(90deg)}
+.hero{background:linear-gradient(135deg,#86ae8c 0%,#5b8461 55%,#46694c 100%);position:relative;overflow:hidden;box-shadow:0 10px 28px rgba(79,115,86,.35)}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.22) 50%,transparent 70%);transform:translateX(-120%)}
+.go .hero::after{animation:shine 1.4s .3s var(--ease)}
+.qa button{background:linear-gradient(145deg,#86ae8c,#5b8461);transition:transform .15s var(--ease)}
+.badge.bad{animation:pulse 2s infinite}
+.sheet-bg{animation:fade .25s ease-out}.sheet{animation:slideup .35s var(--ease)}
+.scan{animation:fade .2s}
+.toast{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + 100px);transform:translateX(-50%);background:#2b2f2a;color:#fff;padding:12px 20px;border-radius:24px;font-size:15px;font-weight:600;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.3);animation:toast 2.3s var(--ease) forwards;white-space:nowrap}
+.spin{width:38px;height:38px;border:4px solid #dfe8dc;border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+/* entrance animations only on tab switch / first load (.go) */
+.go .content>*{animation:rise .5s var(--ease) both}
+.go .content>*:nth-child(2){animation-delay:.05s}.go .content>*:nth-child(3){animation-delay:.1s}.go .content>*:nth-child(4){animation-delay:.15s}
+.go .content>*:nth-child(5){animation-delay:.2s}.go .content>*:nth-child(6){animation-delay:.25s}.go .content>*:nth-child(n+7){animation-delay:.3s}
+.go .nav button.on span{animation:pop .45s var(--ease)}
+.go .bt i{transform-origin:left;animation:growx .8s .2s var(--ease) both}
+.go .wk i{transform-origin:bottom;animation:growy .8s .2s var(--ease) both}
+.go .item{animation:rise .4s var(--ease) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes slideup{from{transform:translateY(100%)}to{transform:none}}
+@keyframes pop{0%{transform:scale(.7)}60%{transform:scale(1.3)}100%{transform:translateY(-1px) scale(1.15)}}
+@keyframes growx{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@keyframes growy{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes shine{to{transform:translateX(120%)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(180,73,60,.35)}50%{box-shadow:0 0 0 6px rgba(180,73,60,0)}}
+@keyframes toast{0%{opacity:0;transform:translate(-50%,20px)}12%,80%{opacity:1;transform:translate(-50%,0)}100%{opacity:0;transform:translate(-50%,10px)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0s!important;transition-duration:.01ms!important}}
+/* dark mode (follows iPhone setting) */
+@media (prefers-color-scheme:dark){
+:root{--bg:#121813;--card:#1c251f;--ink:#eef1ea;--muted:#9aa595;--line:#2d3a30;--soft:#26362b;--shadow:0 2px 12px rgba(0,0,0,.4)}
+body{background:radial-gradient(1200px 500px at 50% -10%,#1d2a20 0%,var(--bg) 60%) fixed}
+.card{border-color:rgba(255,255,255,.05);box-shadow:0 8px 24px rgba(0,0,0,.35)}
+input,select{background:#232e26;color:var(--ink)}
+.nav{background:rgba(28,37,31,.8)}
+.btn.secondary,.nav button.on,.qty button,.mini,.offer,.code,.row .mini{background:var(--soft);color:#a9d1ae}
+.btn.danger{background:#4a2a26;color:#ff9d90}
+.badge.bad{background:#4a2a26;color:#ff9d90}.badge.warn{background:#4d3716;color:#f3c37a}.badge.soon{background:#44401a;color:#e6d77a}.badge.ok,.badge.none{background:#26302a;color:var(--muted)}
+.bt{background:#2d3a30}.tag{background:#4d3716;color:#f3c37a}.chk{color:#121813}
+.offline{background:#4d3716;color:#f3c37a}.spin{border-color:#2d3a30;border-top-color:var(--green)}
+.toast{background:#eef1ea;color:#121813}
+}

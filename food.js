@@ -136,7 +136,7 @@ export async function submit(kind, v) {
   const { error } = id ? await sb.from('food_items').update(row).eq('id', id)
     : await sb.from('food_items').insert({ ...row, household_id: S.hh.id, created_by: S.session.user.id })
   if (error) { F.err = error.message; return X.render() }
-  F.modal = null; F.err = null; F.dirty = false; await load(); X.render()
+  F.modal = null; F.err = null; F.dirty = false; X.toast('Saved ✓'); await load(); X.render()
 }
 
 export async function click(act, el) {
@@ -164,7 +164,7 @@ export async function click(act, el) {
     return
   } else if (act === 'f-del') {
     if (!confirm(`Delete “${F.modal.name}”?`)) return
-    await sb.from('food_items').delete().eq('id', F.modal.id); F.modal = null; await load()
+    await sb.from('food_items').delete().eq('id', F.modal.id); F.modal = null; X.toast('Item deleted'); await load()
   } else if (act === 'f-toggle') {
     const s = F.shop.find(x => x.id === id), p = !s.is_purchased
     await sb.from('shopping_list_items').update({ is_purchased: p, purchased_at: p ? new Date().toISOString() : null }).eq('id', id)
@@ -192,20 +192,36 @@ export function est() {
 const setMsg = t => { const e = document.getElementById('scanmsg'); if (e) e.textContent = t }
 async function scan() {
   const ov = document.createElement('div'); ov.className = 'scan'
-  ov.innerHTML = '<video playsinline muted></video><div class="frame"></div><p>Point the camera at the barcode</p><button class="btn danger" id="scanx">Cancel</button>'
+  ov.innerHTML = `<video playsinline muted></video>
+  <p id="ovmsg">Hold the barcode flat and steady, about 6–8 inches away, in good light.</p>
+  <label class="btn secondary">📸 Take a photo of the barcode<input type="file" accept="image/*" capture="environment" id="scanfile" hidden></label>
+  <div class="addrow2"><input id="scannum" inputmode="numeric" placeholder="or type the number under it"><button class="btn sm" id="scango">Go</button></div>
+  <button class="btn danger" id="scanx">Cancel</button>`
   document.body.appendChild(ov)
-  let done = false, ctl = null
+  const say = t => { const e = ov.querySelector('#ovmsg'); if (e) e.textContent = t }
+  let done = false, ctl = null, reader = null
   const stop = () => { done = true; try { ctl?.stop() } catch {} ; ov.remove() }
+  const found = code => { if (done) return; stop(); lookup(code) }
   ov.querySelector('#scanx').onclick = stop
+  ov.querySelector('#scango').onclick = () => { const d = ov.querySelector('#scannum').value.replace(/\D/g, ''); if (d.length >= 6) found(d); else say('Type the digits printed under the barcode.') }
   try {
-    const { BrowserMultiFormatReader } = await import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm')
-    const reader = new BrowserMultiFormatReader()
-    ctl = await reader.decodeFromConstraints({ video: { facingMode: 'environment' } }, ov.querySelector('video'), (res, err, c) => {
+    const [{ BrowserMultiFormatReader }, lib] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/@zxing/browser@0.1.5/+esm'), import('https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/+esm')])
+    const { DecodeHintType: H, BarcodeFormat: B } = lib
+    const hints = new Map([[H.POSSIBLE_FORMATS, [B.EAN_13, B.EAN_8, B.UPC_A, B.UPC_E, B.CODE_128, B.CODE_39]], [H.TRY_HARDER, true]])
+    reader = new BrowserMultiFormatReader(hints, { delayBetweenScanAttempts: 120 })
+    ov.querySelector('#scanfile').onchange = async e => {
+      const file = e.target.files[0]; if (!file) return
+      say('Reading photo…')
+      try { const r = await reader.decodeFromImageUrl(URL.createObjectURL(file)); found(r.getText()) }
+      catch { say('No barcode found in that photo. Try again closer, with the barcode filling most of the frame.') }
+    }
+    ctl = await reader.decodeFromConstraints({ video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } }, ov.querySelector('video'), (res, err, c) => {
       ctl = c || ctl
-      if (res && !done) { const code = res.getText(); stop(); lookup(code) }
+      if (res) found(res.getText())
     })
     if (done) ctl?.stop()
-  } catch (e) { stop(); setMsg('Camera unavailable: ' + (e.message || e) + '. Check Safari’s camera permission for this site.') }
+  } catch (e) { say('Live scanning isn’t available (' + (e.message || e) + '). Use the photo button or type the number.') }
 }
 async function lookup(code) {
   setMsg(`Looking up ${code}…`)

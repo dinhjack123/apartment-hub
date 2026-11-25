@@ -7,8 +7,8 @@ const S = { session: null, hh: null, tab: 'home', members: [], code: null, msg: 
 let channel = null
 import * as Food from './food.js'
 import * as Spending from './spending.js'
-Food.init({ sb, S, esc, render: () => render() })
-Spending.init({ sb, S, esc, render: () => render() })
+Food.init({ sb, S, esc, toast, render: () => render() })
+Spending.init({ sb, S, esc, toast, render: () => render() })
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
 addEventListener('online', () => { S.online = true; render() })
@@ -19,7 +19,7 @@ async function loadHousehold() {
   const { data, error } = await sb.from('household_members').select('household_id, households(id, name)').eq('user_id', S.session.user.id).limit(1).maybeSingle()
   if (error) S.error = error.message
   else S.hh = data?.households ?? null
-  S.loading = false
+  S.loading = false; S.anim = true
   if (S.hh) { await loadMembers(); subscribe(); await Food.load(); await Spending.load() }
   render()
 }
@@ -79,24 +79,44 @@ function tabView() {
     <button class="btn secondary" data-act="s-cats">Spending categories</button>
     <button class="btn secondary" data-act="signout">Sign out</button>`
 }
+function toast(t) {
+  const e = document.createElement('div'); e.className = 'toast'; e.textContent = t
+  document.body.appendChild(e); setTimeout(() => e.remove(), 2300)
+}
+function count(el, isMoney) {
+  const end = Number(el.dataset.money ?? el.dataset.int), t0 = performance.now()
+  const step = t => {
+    const p = Math.min(1, (t - t0) / 700), v = end * (1 - Math.pow(1 - p, 3))
+    el.textContent = isMoney ? (v / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : Math.round(v)
+    if (p < 1) requestAnimationFrame(step)
+  }
+  requestAnimationFrame(step)
+}
+function afterRender() {
+  const shell = root.querySelector('.shell'); if (!shell || !S.anim) return
+  S.anim = false; shell.classList.add('go')
+  shell.querySelectorAll('[data-money]').forEach(el => count(el, true))
+  shell.querySelectorAll('[data-int]').forEach(el => count(el, false))
+}
 function homeView() {
   const f = Food.home(), sp = Spending.homeSummary(), alerts = [...f.alerts, ...sp.alerts]
   return `<h1>${esc(S.hh.name)}</h1>
   <div class="qa"><button data-act="f-new-home">🥕<span>Add food</span></button><button data-act="f-scan-home">📷<span>Scan</span></button><button data-act="s-new-home">💵<span>Purchase</span></button></div>
   ${!f.tracked && !sp.count ? `<div class="card"><h3>Welcome 👋</h3><ol class="steps"><li>Invite your roommate in Settings.</li><li>Add food with Scan or Add food.</li><li>Log purchases as you spend.</li></ol></div>` : ''}
   ${alerts.length ? `<div class="card"><h3>Heads up</h3>${alerts.map(a => `<p class="alert">${a}</p>`).join('')}</div>` : ''}
-  <div class="two"><div class="card stat"><small>Food tracked</small><b>${f.tracked}</b></div><div class="card stat"><small>Expiring in 7 days</small><b>${f.soon}</b></div>
-  <div class="card stat"><small>Spent this month</small><b>${sp.money(sp.total)}</b></div><div class="card stat"><small>Purchases</small><b>${sp.count}</b></div></div>
+  <div class="two"><div class="card stat"><small>Food tracked</small><b data-int="${f.tracked}">${f.tracked}</b></div><div class="card stat"><small>Expiring in 7 days</small><b data-int="${f.soon}">${f.soon}</b></div>
+  <div class="card stat"><small>Spent this month</small><b data-money="${sp.total}">${sp.money(sp.total)}</b></div><div class="card stat"><small>Purchases</small><b data-int="${sp.count}">${sp.count}</b></div></div>
   ${f.soonHtml}${f.recentHtml}`
 }
 function render() {
-  if (S.loading) { root.innerHTML = '<div class="center">Loading…</div>'; return }
+  if (S.loading) { root.innerHTML = '<div class="center"><div class="spin"></div></div>'; return }
   if (!S.session) { root.innerHTML = authView(); return }
   if (S.error) { root.innerHTML = `<div class="center"><p class="err">Couldn’t load: ${esc(S.error)}</p><p class="muted">If this mentions a missing table, run the SQL in Supabase first.</p><button class="btn" data-act="retry">Try again</button></div>`; return }
   if (!S.hh) { root.innerHTML = onboardView(); return }
   root.innerHTML = `<div class="shell">${S.online ? '' : '<div class="offline">You’re offline. Changes can’t sync until you reconnect.</div>'}
     <main class="content">${tabView()}</main>
     <nav class="nav">${TABS.map(([id, ic, lb]) => `<button class="${S.tab === id ? 'on' : ''}" data-act="tab" data-tab="${id}"><span>${ic}</span><small>${lb}</small></button>`).join('')}</nav></div>`
+  afterRender()
 }
 
 root.addEventListener('submit', async e => {
@@ -130,7 +150,7 @@ root.addEventListener('click', async e => {
   if (act.startsWith('f-')) return Food.click(act, el)
   if (act.startsWith('s-')) return Spending.click(act, el)
   if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
-  else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; if (S.tab === 'home') await Spending.resetMonth(); render() }
+  else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; S.anim = true; if (S.tab === 'home') await Spending.resetMonth(); render() }
   else if (act === 'retry') loadHousehold()
   else if (act === 'signout') await sb.auth.signOut()
   else if (act === 'invite') {

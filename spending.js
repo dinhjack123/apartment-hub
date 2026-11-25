@@ -58,8 +58,8 @@ export function view() {
   const top = [...c].sort((a, b) => b.amount_cents - a.amount_cents).slice(0, 3)
   return `<div class="mnav"><button data-act="s-prev">‹</button><b>${label(m)}</b><button data-act="s-next" ${m >= thisMonth() ? 'disabled' : ''}>›</button></div>
   ${P.err ? `<p class="err">${esc(P.err)}</p>` : ''}
-  <div class="hero"><small>Total household spending</small><div class="big">${money(total)}</div><small>${esc(cmp)}</small></div>
-  <div class="two"><div class="card stat"><small>Purchases</small><b>${c.length}</b></div><div class="card stat"><small>Avg per day</small><b>${money(Math.round(total / elapsed))}</b></div></div>
+  <div class="hero"><small>Total household spending</small><div class="big" data-money="${total}">${money(total)}</div><small>${esc(cmp)}</small></div>
+  <div class="two"><div class="card stat"><small>Purchases</small><b data-int="${c.length}">${c.length}</b></div><div class="card stat"><small>Avg per day</small><b data-money="${Math.round(total / elapsed)}">${money(Math.round(total / elapsed))}</b></div></div>
   ${c.length ? `<div class="card"><h3>By category</h3>${cats.map(([id, v]) => `<div class="bar"><div class="bl"><span>${esc(catName(id))}</span><span>${money(v)}</span></div><div class="bt"><i style="width:${Math.round(v / total * 100)}%"></i></div></div>`).join('')}</div>
   <div class="card"><h3>By week</h3><div class="wk">${weeks.map((w, i) => `<div><i style="height:${Math.round(sum(w) / wmax * 80)}px"></i><small>${money(sum(w)).replace('.00', '')}</small><small>${i * 7 + 1}–${Math.min(dim, i * 7 + 7)}</small></div>`).join('')}</div></div>
   <div class="card"><h3>Largest purchases</h3>${top.map(r => `<div class="row"><span>${esc(r.description)}</span><b style="float:right">${money(r.amount_cents)}</b></div>`).join('')}</div>` : ''}
@@ -113,7 +113,7 @@ export async function submit(kind, v) {
     : await sb.from('purchases').insert({ ...row, household_id: S.hh.id, created_by: S.session.user.id })
   if (error) { P.err = error.message; return X.render() }
   if (row.category_id) localStorage.setItem('hub:lastcat', row.category_id)
-  P.month = row.purchase_date.slice(0, 7); P.modal = null; P.dirty = false; P.err = null
+  P.month = row.purchase_date.slice(0, 7); P.modal = null; P.dirty = false; P.err = null; X.S.anim = true; X.toast('Purchase saved ✓')
   await load(); X.render()
 }
 
@@ -135,7 +135,7 @@ async function exportCsv() {
 
 export async function click(act, el) {
   const id = el.dataset.id
-  if (act === 's-prev' || act === 's-next') { P.month = addM(P.month, act === 's-prev' ? -1 : 1); await load() }
+  if (act === 's-prev' || act === 's-next') { P.month = addM(P.month, act === 's-prev' ? -1 : 1); X.S.anim = true; await load() }
   else if (act === 's-new') P.modal = {}
   else if (act === 's-new-home') { X.S.tab = 'spending'; P.modal = {} }
   else if (act === 's-edit') P.modal = P.rows.find(r => r.id === id)
@@ -147,7 +147,7 @@ export async function click(act, el) {
     f.amount.focus(); return
   } else if (act === 's-del') {
     if (!confirm(`Delete “${P.modal.description}”?`)) return
-    await X.sb.from('purchases').delete().eq('id', P.modal.id); P.modal = null; await load()
+    await X.sb.from('purchases').delete().eq('id', P.modal.id); P.modal = null; X.S.anim = true; X.toast('Purchase deleted'); await load()
   } else if (act === 's-cat-del') {
     if (!confirm('Delete this category?')) return
     await X.sb.from('spending_categories').delete().eq('id', id); await load()
