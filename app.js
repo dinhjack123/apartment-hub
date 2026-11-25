@@ -5,6 +5,8 @@ const root = document.getElementById('root')
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 const S = { session: null, hh: null, tab: 'home', members: [], code: null, msg: null, mode: 'in', busy: false, loading: true, error: null, online: navigator.onLine, copied: false }
 let channel = null
+import * as Food from './food.js'
+Food.init({ sb, S, esc, render: () => render() })
 
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {})
 addEventListener('online', () => { S.online = true; render() })
@@ -16,7 +18,7 @@ async function loadHousehold() {
   if (error) S.error = error.message
   else S.hh = data?.households ?? null
   S.loading = false
-  if (S.hh) { await loadMembers(); subscribe() }
+  if (S.hh) { await loadMembers(); subscribe(); await Food.load() }
   render()
 }
 async function loadMembers() {
@@ -65,7 +67,7 @@ function tabView() {
     <li>Add what’s in your kitchen under <button class="link inline" data-act="tab" data-tab="food">Food</button>.</li>
     <li>Log purchases under <button class="link inline" data-act="tab" data-tab="spending">Spending</button>.</li></ol></div>
     <p class="muted">The dashboard fills in as you add data.</p>`
-  if (S.tab === 'food') return `<h1>Food</h1><div class="card"><p class="muted">Food inventory arrives in Stage 2.</p></div>`
+  if (S.tab === 'food') return Food.view()
   if (S.tab === 'spending') return `<h1>Spending</h1><div class="card"><p class="muted">Spending tracker arrives in Stage 3.</p></div>`
   const me = S.session.user.id
   return `<h1>Settings</h1><div class="card"><h3>Members</h3>
@@ -90,6 +92,7 @@ function render() {
 root.addEventListener('submit', async e => {
   e.preventDefault()
   const f = e.target, kind = f.dataset.form, v = Object.fromEntries(new FormData(f))
+  if (kind?.startsWith('f-')) { await Food.submit(kind, v); return }
   S.busy = true; S.msg = null
   if (kind === 'auth') {
     if (S.mode === 'in') {
@@ -113,6 +116,7 @@ root.addEventListener('submit', async e => {
 root.addEventListener('click', async e => {
   const el = e.target.closest('[data-act]'); if (!el) return
   const act = el.dataset.act
+  if (act.startsWith('f-')) return Food.click(act, el)
   if (act === 'toggle-mode') { S.mode = S.mode === 'in' ? 'up' : 'in'; S.msg = null; render() }
   else if (act === 'tab') { S.tab = el.dataset.tab; S.msg = null; render() }
   else if (act === 'retry') loadHousehold()
@@ -136,3 +140,5 @@ sb.auth.onAuthStateChange((event, session) => {
 const { data } = await sb.auth.getSession()
 S.session = data.session
 if (S.session) loadHousehold(); else { S.loading = false; render() }
+
+root.addEventListener('input', e => { if (e.target.dataset.f === 'q') Food.search(e.target.value) })
